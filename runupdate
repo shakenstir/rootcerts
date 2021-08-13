@@ -1,0 +1,50 @@
+#!/usr/bin/env php
+<?php
+
+$certdir = $argv[1] ?? __DIR__;
+$certs = glob("$certdir/*.crt");
+sort($certs);
+
+$serialhash = "$certdir/SERIALHASH";
+$serial = "$certdir/SERIAL";
+
+$regions = ["FCC" => [], "USA" => [], "AU" => [], "CA" => [], "GLOBAL" => [], "TESTING" => []];
+$usemaps = [];
+$skimaps = [];
+
+$allcerts = "";
+
+foreach ($certs as $file) {
+    $contents = file_get_contents($file);
+    $allcerts .= $contents;
+    $parsed = openssl_x509_parse(openssl_x509_read($contents));
+    $ski = $parsed['extensions']['subjectKeyIdentifier'];
+    if (strlen($ski) !== 59) {
+        throw new \Exception("'$ski' invalid, not 59 chars long");
+    }
+    $filename = basename($file);
+    $skimaps[$ski] = $filename;
+    if (strpos($parsed['name'], 'TEST') !== false) {
+        $usemaps[$ski] = ["TESTING"];
+        $regions["TESTING"][] = $ski;
+        continue;
+    }
+    $usemaps[$ski] = ["GLOBAL"];
+    $regions["GLOBAL"][] = $ski;
+}
+
+$output = ["regions" => $regions, "usemaps" => $usemaps, "skitofile" => $skimaps];
+file_put_contents("$certdir/regions.json", json_encode($output));
+
+if (file_exists($serialhash)) {
+    $currenthash = file_get_contents($serialhash);
+} else {
+    $currenthash = "void";
+}
+
+$newhash = hash('sha256', $allcerts);
+if ($newhash !== $currenthash || !file_exists($serial)) {
+    print "Updating\n";
+    file_put_contents($serialhash, $newhash);
+    file_put_contents($serial, time());
+}
