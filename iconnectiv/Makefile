@@ -5,7 +5,7 @@ components: ca-list.json
 	echo "hi"
 
 ca-list:
-	@if ! curl -s -o $@ https://authenticate-api.iconectiv.com/api/v1/ca-list; then \
+	@if ! curl -s -o $@ https://authenticate-ext-api.iconectiv.com/download/v1/ca-list; then \
 		echo 'Try something else to download the ca-list and put it here'; \
 		exit 1; \
 	fi
