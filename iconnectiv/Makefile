@@ -1,8 +1,8 @@
 SHELL=/bin/bash
 
 components: ca-list.json
+	@echo There is now a $< file
 	CERTS=$$(jq '.trustList' < $< | grep BEGIN) && echo $$CERTS
-	echo "hi"
 
 ca-list:
 	@if ! curl -s -o $@ https://authenticate-ext-api.iconectiv.com/download/v1/ca-list; then \
@@ -10,10 +10,7 @@ ca-list:
 		exit 1; \
 	fi
 
-ca-list.jwt: ca-list
-	jq -r '.caList' < $< > $@
-
-ca-list.json: ca-list.jwt
+ca-list.json: ca-list
 	cut -d. -f2 < $< | base64 -d 2>/dev/null > $@ || :
 
 
